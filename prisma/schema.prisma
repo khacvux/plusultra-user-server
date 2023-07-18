@@ -11,15 +11,17 @@ datasource db {
 }
 
 model User {
-  id         Int     @id @default(autoincrement())
-  roleId     Int
-  hash       String
-  firstName  String?
-  lastName   String?
-  email      String  @unique
-  telephone  String?
-  avatar     String?
-  userShopId Int?    @unique
+  id        Int      @id @default(autoincrement())
+  roleId    Int
+  hash      String
+  firstName String?
+  lastName  String?
+  email     String   @unique
+  bio       String?
+  dob       DateTime?
+  telephone String?
+  avatar    String?
+  private   Boolean?
 
   createdAt  DateTime @default(now())
   modifiedAt DateTime @updatedAt
@@ -27,15 +29,29 @@ model User {
   role             UserRole          @relation("user_role_fk", fields: [roleId], references: [id])
   userAddress      UserAddress[]     @relation("user_address_fk")
   userPayment      UserPayment[]     @relation("user_payment_fk")
-  shoppingSession  ShoppingSession?  @relation("shopping_session_fk")
+  carts            CartItem[]        @relation("cart_item_fk")
   orderDetail      OrderDetail?      @relation("order_detail_fk")
   products         Product[]         @relation("users_product_fk")
   post             Post[]            @relation("user_post_fk")
   postLikes        PostLike[]        @relation("user_likepost")
   postComments     PostComment[]     @relation("user_commentpost")
   postCommentLikes PostCommentLike[] @relation("user_like_comment")
+  followers        Follow[]          @relation("followers")
+  followings       Follow[]          @relation("followings")
 
   @@map("user")
+}
+
+model Follow {
+  id         Int @id @default(autoincrement())
+  userId     Int
+  followerId Int
+  status     Int
+
+  user     User @relation("followers", fields: [userId], references: [id])
+  follower User @relation("followings", fields: [followerId], references: [id])
+
+  @@map("follow")
 }
 
 model UserRole {
@@ -49,7 +65,7 @@ model UserRole {
 
 model UserAddress {
   id         Int    @id @default(autoincrement())
-  userId     Int    
+  userId     Int
   address    String
   city       String
   postalCode String
@@ -73,32 +89,21 @@ model UserPayment {
   @@map("user_payment")
 }
 
-model ShoppingSession {
-  id     Int     @id @default(autoincrement())
-  userId Int     @unique
-  total  Decimal @db.Money
-
-  user     User       @relation("shopping_session_fk", fields: [userId], references: [id])
-  cartItem CartItem[] @relation("cart_item_fk")
-
-  createdAt  DateTime @default(now())
-  modifiedAt DateTime @updatedAt
-
-  @@map("shopping_session")
-}
-
 model CartItem {
-  id        Int @id @default(autoincrement())
-  sessionId Int @unique
-  productId Int @unique
-  quantity  Int
+  id         Int @unique @default(autoincrement())
+  userId     Int
+  productId  Int
+  quantity   Int
+  categoryId Int
 
-  shoppingSession ShoppingSession @relation("cart_item_fk", fields: [sessionId], references: [id])
-  product         Product?        @relation("product_fk", fields: [productId], references: [id])
+  product  Product    @relation("product_fk", fields: [productId], references: [id])
+  user     User       @relation("cart_item_fk", fields: [userId], references: [id])
+  category Categories @relation("cart_item_category_fk", fields: [categoryId], references: [id])
 
   createdAt  DateTime @default(now())
   modifiedAt DateTime @updatedAt
 
+  @@id([userId, productId])
   @@map("cart_item")
 }
 
@@ -117,7 +122,7 @@ model Product {
 
   user       User              @relation("users_product_fk", fields: [sellerId], references: [id])
   moneyType  MoneyType         @relation("product_money_type", fields: [moneyTypeId], references: [moneyTypeId])
-  cartItem   CartItem?         @relation("product_fk")
+  cartItem   CartItem[]        @relation("product_fk")
   categories ProductCategory[] @relation("product_category_fk")
   inventory  ProductInventory? @relation("product_inventory_fk")
   discount   ProductDiscount[] @relation("product_discount_fk")
@@ -157,6 +162,7 @@ model Categories {
   desc String?
 
   productCategory ProductCategory[] @relation("category_product_fk")
+  cartItem        CartItem[]        @relation("cart_item_category_fk")
 
   @@map("categories")
 }
@@ -253,6 +259,7 @@ model Post {
   id       Int     @id @default(autoincrement())
   caption  String?
   authorId Int
+  audience Int?
   // productsId Int?
 
   createdAt  DateTime @default(now())
